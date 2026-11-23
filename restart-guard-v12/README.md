@@ -1,110 +1,172 @@
-# dsh-restart-guard閿涘潏andidate v10閿?
-**閻楀牊婀伴悽杈侀崸妤€鐡ч懞鍌氭惐鐢苯鍠呯€规熬绱濇稉宥囨暠 package.json 閼奉亣鍫崘鍐茬暰閵嗗倹鐥呴張澶婂讲娣嚶ら煩娴犳枻绱濇稉宥呭竾缂傗斂鈧?*
+# DSH Restart Guard
 
-## 娑撯偓閵嗕礁褰傜敮鍐煩娴犳枻绱伴崫鍫濈瑖鐞涖劌鏁稉鈧崘鍐茬暰閻楀牊婀?
-| 閻楀牊婀?| profile | `lib/index.js` | `package.json` |
-|---|---|---|---|
-| 0.2.2-rc.1 | v022 | `eafe4adb閳ヮ泭bc54b` | `0a94a38f閳?462c3` |
-| 0.2.3-alpha.2 | v023 | `a1ddbfad閳?fcbc9` | `77b81acf閳?b9431` |
+**为 DSH 提供原生压缩失败后的自动恢复保护。**
 
-閸濆牆绗囬弶銉ㄥ殰鐎规ɑ鏌熼崣鎴濈 tarball閿涘苯鍑￠弽绋款嚠濡楀矂娼伴柈銊ц `D:\DeepSeekHarness\resources\app.asar\dsh` 閻ㄥ嫬鐤勯梽鍛摟閼哄倷绗?tarball 娑撯偓閼锋番鈧?
-鏉╂劘顢戦弮鏈电窗**闁插秵鏌婄拋锛勭暬濡€虫健閸濆牆绗囬獮鑸电叀鐞?*閿涙艾鎳℃稉顓炴憿娑撯偓閻楀牆姘ㄩ弰顖氭憿娑撯偓閻楀牞绱盿ttestation 闁插瞼娈戦悧鍫熸拱閸欘亞鏁ゆ禍搴☆嚠鐠愶讣绱濇稉宥勭閼锋潙宓?defer閵嗗倷鍚夐柅?package.json 閺冪姵纭堕弨鐟板綁闊偂鍞ら垾鏂衡偓鏂跨暊娴兼艾婀０鍕梾闂冭埖顔岀悮?濡€虫健閸濆牆绗囩拠?0.2.2閵嗕垢ackage.json 鐠?0.2.3"閻ㄥ嫪绔撮懛瀛樷偓褎顥呴弻銉﹀娑撳鈧?
-## 娴滃被鈧線顣╁Λ鈧敍鍦朣H 閸氼垰濮╅崜宥忕礆
+`dsh-restart-guard` 是一个面向 DSH 的恢复保护插件，旨在应对上下文超限、原生压缩失败等情况下会话无法继续正常运行的问题。
 
+当 DSH 原生压缩无法完成，并且 Provider 返回上下文超限拒绝时，Restart Guard 可以识别该故障并接管恢复流程，通过分块摘要降低会话上下文占用，使原会话有机会恢复正常交互。
+
+项目目标不是替代 DSH 原生压缩，而是在原生机制无法完成恢复时提供额外的保护路径。
+
+## 项目背景
+
+在长上下文会话中，随着消息、工具调用和其他上下文内容不断累积，最终可能触及模型的上下文窗口限制。
+
+当 Provider 因请求超出上下文窗口而拒绝请求时，如果原生压缩也无法正常完成，会话可能陷入无法继续交互的状态。
+
+Restart Guard 针对这一问题提供额外的恢复机制：
+
+1. 识别符合条件的 Provider refusal。
+2. 接管恢复流程。
+3. 将需要处理的上下文分块。
+4. 调用摘要服务生成摘要。
+5. 完成摘要事务并更新会话上下文。
+6. 在上下文降至目标阈值以内后允许后续请求继续执行。
+
+## 核心特性
+
+- **故障识别**：针对 Provider 上下文超限拒绝提供恢复触发路径。
+- **自动接管**：在符合条件的故障场景下接管恢复流程。
+- **分块摘要**：通过多块摘要处理较长的会话上下文。
+- **上下文控制**：根据目标阈值判断是否达到恢复条件。
+- **事务闭合**：关注摘要开始与结束事件的完整性。
+- **原生机制兼容方向**：作为额外保护层，而不是替换 DSH 原生压缩。
+
+## 工作流程
+
+```text
+       用户发送请求
+             |
+             v
+       DSH 正常处理
+             |
+             v
+      Provider 请求被拒绝
+             |
+             v
+      Restart Guard 识别故障
+             |
+             v
+         接管恢复流程
+             |
+             v
+        分块处理上下文
+             |
+             v
+         调用摘要服务
+             |
+             v
+       更新并检查上下文
+             |
+       +-----+------+
+       |            |
+     未达目标      达到目标
+       |            |
+       v            v
+    继续恢复     允许请求继续
+                    |
+                    v
+                普通对话恢复
 ```
-node scripts/attest.mjs --runtime <app.asar/dsh> --profile desktop \
-  --profile-dir <profile 閻╊喖缍? --out <attestation.json> --boot-id <閺堫剚顐奸崥顖氬З id>
-```
 
-- 閸欘亝甯撮崣?**runtimeRoot**閿涘奔绗夐幒銉ュ綀鐠嬪啰鏁ら懓鍛舶閻?module/package 鐠侯垰绶為敍?- 娴?`<runtimeRoot>/package.json` 鐠囪锛愰弰搴ｆ畱閻楀牊婀伴敍宀€宸辨径鍗炲祮婢惰精瑙﹂敍鍫滅瑝闂勫秶楠囬敍澶涚幢
-- 鐟欙絾鐎?`<runtimeRoot>/node_modules/@deepseek-ai/dsh-compaction-basic`閿涘瞼鐣婚崫鍫濈瑖閺屻儴銆冮敍?- 娴溿倕寮堕弽锟犵崣 package name閵嗕垢ackage.json 閻楀牊婀伴妴涔竌ckage.json 鐎涙濡崫鍫濈瑖閵嗕浇绻嶇悰灞炬濞撳懎宕熼悧鍫熸拱閿?- asar 閸愬懏鏋冩禒鍓佺病 `@electron/asar` 鐠囪褰囬敍娑氣敄 profile 閻╁瓨甯存径杈Е閿?- 閺堫剝鐤嗛崣顏呮暜閹镐焦顢戦棃?`<app.asar>/dsh`閿涘瘈npacked CLI 娑撯偓瀵?defer閵?
-## 娑撳鈧浇绻嶇悰灞炬缂佹垵鐣?
-1. attestation閿涙chema閵嗕梗bootId` 娑撳孩婀板▎鈥虫儙閸斻劋绔撮懛娣偓涔竢ofile 闂堢偟鈹栨稉鏂垮爱闁板秲鈧焦婀潻鍥ㄦ埂閿涘牓绮拋?24h閿涘绱?2. `modulePath` 韫囧懘銆忛崷?`runtimeRoot` 閸愬拑绱?*閹稿鐭惧鍕瀻濞堥潧鍨介弬?*閿涘奔绗夐弰顖氱摟缁楋缚瑕嗛崜宥囩磻閿涘绱?3. 婢跺秶鐣诲Ο鈥虫健閸濆牆绗?閳?閺屻儴銆?閳?閺夊啫鈻?version/profile閿涙矘ttestation 閻楀牊婀版稉搴濈娑撳秶顑?閳?defer閿?4. `package.json` 鐠侯垰绶炴稊鐔锋躬 `runtimeRoot` 閸愬拑绱濈€涙濡崫鍫濈瑖閸涙垝鑵戠悰顭掔幢
-5. `import(modulePath)`閿涘苯浠涚€电钖勯煬顐″敜 / 閸樼喎鐎?/ 閺傝纭剁€瑰本鏆ｉ幀褎顥呴弻銉ｂ偓?
-## 閸ユ稏鈧赋2-3閿涙碍鐦″▎鈥冲З閹靛澧犳径宥嗙壋
+## 测试情况
 
-妫ｆ牗顐奸弽鎼佺崣閺冭埖濡告稉澶夐嚋閸忔娊鏁弬瑙勭《閻?*閸戣姤鏆熷鏇犳暏**鐎涙绻樿箛顐ゅ弾閵嗗倹鐦″▎?`pruneSession()` 閸撳秲鈧焦鐦″▎?`compactRegion()` 閸撳稄绱?
-- attestation 娴犲秴婀弬鐗堟櫏閺堢喎鍞撮敍?- `engine.constructor === 韫囶偆鍙庣猾绫ら妴浣稿斧閸ㄥ绮涢弰顖氭彥閻撗冨斧閸ㄥ绱?- 鐎圭偘绶ュ▽鈩冩箒 own-property 鐟曞棛娲婇敍?- 瑜版挸澧?prototype 娑撳﹦娈戦弬瑙勭《**娴犲秶鐡戞禍搴℃彥閻撗囧櫡閻ㄥ嫬鍤遍弫鏉跨穿閻?*閿涘牆娲滃?prototype 鐞氼偅娴涢幑顫瘍閼宠棄褰傞悳甯礆閿?- 閺傝纭舵禒宥嗘Ц function閵?
-娴犺绔存径杈Е 閳?缁斿宓?`FAILED`閿涘奔绗夐崘娆忓弳閵?
-## 娴滄柣鈧椒淇婃禒鏄忕珶閻ｅ矉绱欓柌宥堫洣閿?
-閺堫剝鐤嗛崫鍫濈瑖閸欘亣鐦夐弰?`@deepseek-ai/dsh-compaction-basic` 閻?`lib/index.js` 娑?`package.json` 娑撳骸鐣奸弬鐟板絺鐢啩绔撮懛娣偓?*濞屸剝婀?*鐠囦焦妲戦崗鏈电稇娓氭繆绂嗛弽鎴犳畱鐎瑰本鏆ｉ幀褝绱濇稊鐔哥梾閺堝鐦夐弰搴ょ箥鐞涘本婀￠崘鍛摠閺堫亣顫﹀▔銊ュ弳閵?
-瀹歌尙鈥樼拋銈勭窗閻╁瓨甯磋ぐ鍗炴惙鐠侯垳鏁?閸樺缂夌拠顓濈疅閻ㄥ嫬顦婚柈銊︽降濠ф劧绱癭dsh-agent` 閻?`modelSelection`閵嗕梗dsh-session` 閻ㄥ嫪绨ㄦ禒鏈电瑢 surface 鐟欏嫬鍨妴涔sh-llm` 閻?`resolveModelInfo`/`defaultMaxTokens`閵嗕恭ordis 閻?service 鐟佸懘鍘ら妴鍌氱暊娴?*娑撳秴婀?*閺堫剝鐤嗛崫鍫濈瑖鐟曞棛娲婇懠鍐ㄦ纯閸愬懌鈧?
-## 閸忣厹鈧焦鐣担娆撴閸?
-- 闁繑妲戠€圭偘绶?Proxy 閺冪姵纭剁拠鍡楀焼閿?- `Object.create(prototype)` 閼充粙鈧俺绻冨Λ鈧弻銉礉娴ｅ棗鐣?*濞屸剝婀侀幍褑顢戦弸鍕偓鐘叉珤**閿涘苯鐤勬笟瀣摟濞堝吀绗岀粔浣规箒閻樿埖鈧礁褰查懗鑺ユ弓閸掓繂顫愰崠鏍电礉**娑撳秷鍏樻穱婵婄槈鐞涘奔璐熺粵澶夌幆**閿涘奔绮庣拋鏉跨秿娑撻缚闊╂禒鑺ヮ梾閺屻儲鐣担娆欑幢
-- 婵炰浇鍎婂Ο鈥崇€烽梽鎰暰娑撴椽鍎寸純鍙夌磽缁夋眹鈧線鏁婇悧鍫滅贩鐠ф牓鈧礁鐤勬笟瀣╁悏鐟佸懌鈧焦鍓版径?monkey-patch閿涘奔绗夐弰顖涘Х瀵扳€叉崲閹板繑浼撻幇蹇氱箻缁嬪鍞存禒锝囩垳閻ㄥ嫭鐭欑粻渚库偓?
-## 娑撳啨鈧線鍘ょ純?
-```yaml
-- id: restart-guard
-  config:
-    enabled: true
-    dryRun: true
-    proactive: false
-    engineRouteMode: auto
-    attestationPath: ''
-    profileName: ''
-    attestationMaxAgeMs: 86400000
-    marginTokens: 32768
-    assumedRatio: 2.0
-    maxChunks: 6
-    maxSummaryAttempts: 8
-    maxTransportRetries: 3
-    transportBackoffMs: 500
-    transportBackoffMaxMs: 8000
-    treatTransportAsOverflow: false
-    transportOverflowConsecutive: 2
-    maxRecoveryAttempts: 3
-    summaryInstructionTokens: 4096
-    summaryBudgetRatio: 0.75
-    minTailNodes: 1
-    logFile: ''
-```
+### v12 真实环境测试
 
-閸氼垰濮╅崳銊╂付鐠佸墽鐤?`DSH_RESTART_GUARD_ATTESTATION`閵嗕梗DSH_RESTART_GUARD_BOOT_ID`閿涘苯褰查柅?`DSH_PROFILE`閵?
-## 閸忣偁鈧焦绁寸拠鏇礄114 妞ょ櫢绱?
-| 婵傛ぞ娆?| 妞よ鏆?| 缁鐎?|
-|---|---:|---|
-| `selftest` | 13 | fake |
-| `harness` | 13 | fake session閿涘矁闊╂禒鑺ユ暈閸?|
-| `recovery-test` | 7 | fake |
-| `transport-test` | 9 | fake |
-| `route-test` | 25 | fake |
-| `identity-test` | 15 | **閻喎鐤勭猾?+ 閻喎鐤勫Ο鈥虫健閺傚洣娆?+ 閻喎鐤勯崫鍫濈瑖 + 韫囶偆鍙庢径宥嗙壋** |
-| `preflight-test` | 7 | **閻喎鐤勬０鍕梾閼存碍婀伴敍灞芥儓 asar 娑撳簼鍚夐柅鐘插冀娓?* |
-| `real-api-test` 鑴? | 8 鑴? | **閻喎鐤?Session append** |
-| `real-engine-test` | 9 | **閻喎鐤勭猾?+ 閻喎鐤?attestation + 閻喎鐤?summarize()** |
+v12 已完成一次真实环境端到端测试。
 
-## 娑旀縿鈧礁鍑￠惌銉╂閸?
-- unpacked CLI 瑜般垺鈧椒绗夐弨顖涘瘮閿?- 妫板嫭顥呴張顏呭复閸忋儱鎯庨崝銊ユ珤閿涘牊瀵滄潏鍦櫕娑撳秴浠涢敍澶涚幢
-- 閺冪姷婀＄€?provider / 閻喎鐤?compactRegion / 閻喎鐤?token meter閿?- 楠炶泛褰?TRANSPORT 鐠佲剝鏆熼弮?request ID閿涙稑宕熼弶陇绉存０鍕暬濞戝牊浼呮稉宥呭讲閸樺绱遍柌宥嗘杹 IO 閺堫亙绱崠鏍モ偓?
-## 妯″瀷鍒囨崲锛坴11锛?
-妯″瀷鍒囨崲鏃讹紝DSH 鍘熺敓寮曟搸浼氬湪 `agent/request` 閲屻€佷换浣曡姹傚彂鍑轰箣鍓嶅帇缂╀細璇濓紙`compactPressure`锛夈€?`agent/pre-step` 涓ユ牸鏃╀簬璇?hook锛屽洜姝ゅ畧鍗湪 pre-step 璇嗗埆鍒囨崲骞舵彁鍓嶆仮澶嶏細
+测试使用真实 DSH 会话数据、真实 Provider 请求及真实摘要服务，而非仅依赖模拟响应。
 
-| 鍒ゅ畾 | 琛屼负 |
+<escape>| 测试项目 | 结果 |
 |---|---|
-| `same`锛坧rovider 涓?model 閮界浉鍚岋級 | 鍘熻涓猴紝涓嶅彉 |
-| `none`锛堟病鏈夋棫 header锛屾柊浼氳瘽棣栬疆锛?| 鍘熻涓猴紝涓嶅彉 |
-| `unknown`锛堟湁 header 浣嗕换涓€渚х己璺敱瀛楁锛?| **reject**锛屼笉鐚?|
-| `switch` + 瓒呰繃鏂版ā鍨嬬殑鐩爣澧?| 浠?`model-switch` trigger 鎵ц鎭㈠锛涙垚鍔熷悗瑕佹眰娴嬮噺涓ユ牸浣庝簬鍘熺敓闃堝€?|
-| `switch` + 鏈秴澧?| 鏀捐锛堝師鐢熶篃浼氬洜浣庝簬闃堝€艰烦杩囷級 |
-| `switch` + 鎭㈠澶辫触 / 浠嶉珮浜庡師鐢熼槇鍊?| **reject** |
-| `switch` + `dryRun` | **reject**锛岀悊鐢?`dryRun_blocked_model_switch` |
-| `switch` + `switchRecovery: false` | 鏀捐缁欏師鐢熷鐞嗭紙鍥炴粴璺緞锛?|
+| Provider 超窗拒绝识别 | 通过 |
+| refusal 恢复接管 | 通过 |
+| 两块真实摘要请求 | 通过 |
+| 摘要事务正常闭合 | 通过 |
+| 上下文下降至目标阈值以内 | 通过 |
+| 恢复后普通请求 | 通过 |
+| Assistant 正常回复 | 通过 |</escape>
 
-reject 閫氳繃 pre-step 鐨?`{kind:'reject'}` 鍐崇瓥瀹炵幇锛氫笉杩涘叆 `prepareRequest`锛屽洜姝や笉鍙兘瑙﹀彂鍘熺敓鍘嬬缉锛屼篃涓嶄細鐣欎笅鍗婃彁浜や簨鍔°€?
-闃堝€煎鏍告寜鍘熺敓鍏紡锛坄floor(min(window脳thresholdRatio, window鈭抮eserved鈭抙eadroom))`锛夎绠楋紝骞剁敤涓庡師鐢熺浉鍚岀殑 header 鍙ｅ緞閲嶆柊娴嬮噺銆
-## 请求字符预算（v12）
+### 关键测试数据
 
-除 token 墙外，守卫还检查估算的请求体字符数（JS `string.length`，不是 UTF-8 字节）：
+| 指标 | 实测结果 |
+|---|---:|
+| 模型上下文窗口 | 1,048,576 tokens |
+| Provider 报告请求总量 | 1,572,102 tokens |
+| 恢复目标墙 | 454,241 |
+| 第一块摘要后 meter | 603,455 |
+| 第二块摘要后 meter | 422,660 |
+| 摘要分块数量 | 2 |
+| 最终 Turn 状态 | `completed` |
 
-```
-estimatedChars = JSON.stringify(projectedMessages).length + JSON.stringify(tools).length + 65536
-estimateWithMargin = ceil(estimatedChars * 1.10)
-charsOK = estimateWithMargin <= requestCharsBudget
-```
+最终上下文 meter 从 1,014,904 降至 422,660，低于目标墙 454,241。
 
-- `requestCharsBudget` 默认 `1_800_000`，是实验起点，不是已校准的硬上限；
-- `requestCharsBudget: 0` 关闭检查，行为与 v11 完全一致；
-- `toolHistory` 不单独计入（它只改写 developer 消息与工具声明，已含在投影消息里）；
-- 日志区分 `estimatedChars`、`estimateWithMargin`、fetch `bodyLength` 与 UTF-8 字节，不混用。
+**测试结论：v12 的真实 Provider refusal 触发路径通过端到端验证。**
 
-每块提交后重新投影、重新估算；token 与字符两项都满足才进入原有的 nativeThreshold 复核与放行。
+完整测试记录：
+
+[REAL-SESSION-TEST-v12.md](REAL-SESSION-TEST-v12.md)
+
+## 当前验证边界
+
+为了避免将实验结果误认为完整功能验收，需要明确以下事项：
+
+- 当前已完成真实环境验证的是 Provider refusal 触发路径。
+- 模型切换触发路径尚未完成真实会话验证。
+- 本项目尚不能宣称覆盖所有上下文超限、摘要失败、并发和异常中断场景。
+- 测试中使用过的实验性配置不应直接视为推荐默认配置。
+
+后续测试结果将以实际验证记录为准。
+
+## 安装与使用
+
+本项目面向 DSH 插件环境。
+
+请根据当前发布版本及其目录中的实际文件进行安装和配置。
+
+> 安装命令、依赖要求和配置项应以经过验证的正式发布说明为准。请勿直接复制测试环境中的实验配置用于生产环境。
+
+## 安全与数据保护
+
+使用前请注意：
+
+- 配置文件中的 API Key 和其他凭据不得提交到公开仓库。
+- 不要公开包含私人会话内容的原始日志。
+- 修改插件或配置前建议保留备份。
+- 建议先在独立测试环境验证，再用于重要会话。
+- 不要将本项目视为替代备份机制。
+
+## 项目状态
+
+当前公开版本：**v12**
+
+项目仍在持续验证和完善中。
+
+已验证的功能以真实测试报告为准，尚未验证的路径不会被视为正式通过。
+
+## 反馈与贡献
+
+欢迎 DSH 用户和开发者：
+
+- 提交 Bug Report。
+- 分享不同环境下的测试结果。
+- 提出功能改进建议。
+- 协助验证尚未覆盖的恢复路径。
+
+提交问题时，建议附上：
+
+1. DSH 版本。
+2. 插件版本。
+3. 触发场景。
+4. 相关错误信息。
+5. 脱敏后的运行日志。
+
+请勿上传 API Key、私人会话数据或其他敏感信息。
+
+## License
+
+本项目采用 [MIT License](LICENSE)。
+
+欢迎使用、修改、分发和集成。
+
+使用或分发时请保留原始版权声明及许可证文本。
