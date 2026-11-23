@@ -1,0 +1,4 @@
+# dsh-restart-guard bundle patch: one insert registers the guard.
+- insert:
+    - id: restart-guard
+      name: 'dsh-restart-guard'

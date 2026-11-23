@@ -1,0 +1,191 @@
+﻿=== static ===
+node --check: passed
+
+=== scripts/selftest.mjs ===
+ok 1 - wall divides by the calibration ratio and subtracts the margin
+ok 2 - wall is zero when nothing is usable
+ok 3 - calibration ratio derives from the provider sample and clamps
+ok 4 - planChunk stops at the budget and skips unbalanced cuts
+ok 5 - planChunk stops at the target instead of maximal compaction
+ok 6 - planChunk falls back to the largest fit when the target is unreachable
+ok 7 - planChunk never splits a pair
+ok 8 - planChunk keeps the tail
+ok 9 - balanceAfter counts open tool calls
+ok 10 - firstCompactableIndex looks up a seq, never the node object
+ok 11 - summary budget subtracts system, tools, instruction and margin
+ok 12 - planChunk starting after the system node never returns index 0
+ok 13 - toolsPrice follows the 4-chars-per-token heuristic
+
+13 checks passed
+
+=== scripts/harness.mjs ===
+ok - registers both prepended hooks plus the streak reset
+ok - healthy session under an assumed wall: silent, no write
+ok - over an assumed wall without calibration: warns once, never compacts
+ok - proactive:true opts into compaction with the assumed ratio
+ok - missing compaction engine: no-op
+ok - request-error ignores non-overflow codes
+ok - refusal: calibrates from the provider text, compacts, retries
+ok - TRANSPORT is ignored while the heuristic is off
+ok - a calibration for model A does not authorize model B
+ok - returning to the calibrated model restores authorization
+ok - stale header + switch to a larger model: healthy, no prune and no compact
+ok - stale header + switch to a smaller model: defer instead of using A's parameters
+ok - the same model under a different provider does not inherit a calibration
+
+harness passed
+
+=== scripts/recovery-test.mjs ===
+ok 1 - system head is excluded from the planned chunk
+ok 2 - token-meter/surface mismatch aborts before any compaction
+ok 3 - replacement committed but end missing is completed safely
+ok 4 - start without body is closed with an error and retried
+ok 5 - attempt cap fails explicitly, without a fake success
+ok 6 - recovery cap fails explicitly and does not loop forever
+ok 7 - orphan owned by a previous turn fails closed
+
+7 recovery checks passed
+
+=== scripts/transport-test.mjs ===
+ok 1 - heuristic off (default): a transport streak changes nothing
+ok 2 - heuristic on but uncalibrated: repeated TRANSPORT never compacts
+ok 3 - heuristic on and calibrated: one transport is not enough
+ok 4 - heuristic on and calibrated: two transports over the wall trigger recovery
+ok 5 - a streak that fails the wall check is cleared, so a third TRANSPORT alone cannot fire
+ok 6 - a completed reply resets the streak
+ok 7 - a new turn resets the streak
+ok 8 - transport retries are capped and back off exponentially
+ok 9 - summary attempt cap defaults to 8
+
+9 transport checks passed
+
+=== scripts/route-test.mjs ===
+ok 1 - H/0.2.2: answered=A, header=B, proposed=A -> summary is B -> defer [fake session/engine/llm]
+ok 2 - H/0.2.2: answered=A, header=B, proposed=B -> summary is B -> proceeds [fake session/engine/llm]
+ok 3 - H/0.2.3: answered=A, header=B, proposed=A -> summary is A -> proceeds [fake session/engine/llm]
+ok 4 - H/0.2.3: answered=A, header=B, proposed=B -> summary is A -> defer [fake session/engine/llm]
+ok 5 - a config-bearing object with no capability markers defers [fake session/engine/llm]
+ok 6 - a pin that disagrees with the loaded engine defers instead of overriding [fake session/engine/llm]
+ok 7 - a pin that agrees with the loaded engine is accepted [fake session/engine/llm]
+ok 8 - the summary budget uses the per-target maxTokens override [fake session/engine/llm]
+ok 9 - a missing summary maxTokens defers instead of inventing one [fake session/engine/llm]
+ok 10 - J: adapterDefaults.maxTokens=true with a valid default compacts [fake session/engine/llm]
+ok 11 - J: adapterDefaults.maxTokens=true with defaultMaxTokens=null defers [fake session/engine/llm]
+ok 12 - J: adapterDefaults.maxTokens=true with defaultMaxTokens=0 defers [fake session/engine/llm]
+ok 13 - J: adapterDefaults.maxTokens=true with defaultMaxTokens=-1 defers [fake session/engine/llm]
+ok 14 - J: adapterDefaults.maxTokens=true with defaultMaxTokens=1.5 defers [fake session/engine/llm]
+ok 15 - J: adapterDefaults.maxTokens=true with defaultMaxTokens=256000 defers [fake session/engine/llm]
+ok 16 - J: adapterDefaults=false keeps an explicit maxTokens [fake session/engine/llm]
+ok 17 - J: a missing adapterDefaults keeps an explicit maxTokens [fake session/engine/llm]
+ok 18 - an explicit maxTokens of 0 defers [fake session/engine/llm]
+ok 19 - an explicit maxTokens of -1 defers [fake session/engine/llm]
+ok 20 - an explicit maxTokens of 1.5 defers [fake session/engine/llm]
+ok 21 - an explicit maxTokens of 65536 defers [fake session/engine/llm]
+ok 22 - no explicit maxTokens and no route default defers [fake session/engine/llm]
+ok 23 - an absent explicit maxTokens falls back to the route default [fake session/engine/llm]
+ok 24 - P1-3: v023 stale header explicit 1000 is ignored in favour of the proposed default [fake session/engine/llm]
+ok 25 - P1-3: stale header with no usable proposed default defers [fake session/engine/llm]
+
+25 route/reserve checks passed
+
+=== scripts/switch-test.mjs ===
+ok 1 - same provider/model keeps the old pre-step behaviour [fake session/engine/llm]
+ok 2 - a switch under the wall does not recover [fake session/engine/llm]
+ok 3 - a switch over the wall recovers and settles below the native threshold [fake session/engine/llm]
+ok 4 - a failed recovery rejects the step and never prepares a request [fake session/engine/llm]
+ok 5 - dryRun on a switch over the wall rejects instead of letting native write [fake session/engine/llm]
+ok 6 - an unproven engine identity rejects a switch [fake session/engine/llm]
+ok 7 - a summary-route mismatch rejects a switch [fake session/engine/llm]
+ok 8 - a header without provider/model is unknown and rejects [fake session/engine/llm]
+ok 9 - an incomplete modelSelection with a header is unknown and rejects [fake session/engine/llm]
+ok 10 - successful recovery performs exactly the planned chunk calls [fake session/engine/llm]
+ok 11 - a recovery that stays above the native threshold rejects [fake session/engine/llm]
+ok 12 - switchRecovery=false leaves the switch to the native handler [fake session/engine/llm]
+
+12 switch checks passed
+
+=== scripts/byte-test.mjs ===
+ok 1 - token over + chars under compacts on tokens
+ok 2 - token under + chars over still compacts
+ok 3 - token over + chars over compacts once and passes
+ok 4 - token ok + chars ok does nothing
+ok 5 - the 10% margin decides the boundary exactly
+ok 6 - a surface that stays over budget is rejected
+ok 7 - requestCharsBudget 0 disables the check
+ok 8 - a model switch recovers and passes once both budgets hold
+
+8 byte-budget checks passed
+
+=== scripts/identity-test.mjs ===
+ok 1 - the real 0.2.2 instance binds to its pinned release [real module files + real engine classes]
+ok 2 - the real 0.2.3 instance binds to its pinned release [real module files + real engine classes]
+ok 3 - a lying version in the attestation is refused (module hash wins) [real module files + real engine classes]
+ok 4 - an attestation hash that is not the module hash is refused [real module files + real engine classes]
+ok 5 - a modulePath outside the runtimeRoot is refused [real module files + real engine classes]
+ok 6 - a boot-id mismatch defers [real module files + real engine classes]
+ok 7 - an expired attestation defers [real module files + real engine classes]
+ok 8 - an empty profile is refused [real module files + real engine classes]
+ok 9 - a plain object stamped with a real constructor defers [real module files + real engine classes]
+ok 10 - an instance with an own-property method override defers [real module files + real engine classes]
+ok 11 - replacing an own method after identification fails the pre-use check [real module files + real engine classes]
+ok 12 - replacing a prototype method after identification fails the pre-use check [real module files + real engine classes]
+ok 13 - an expired attestation fails the pre-use check [real module files + real engine classes]
+ok 14 - a cordis-shaped callable service is accepted [real module files + real engine classes]
+ok 15 - a callable with the wrong prototype is refused [real module files + real engine classes]
+ok 16 - a cordis traceable proxy is accepted [real module files + real engine classes]
+ok 17 - a proxy without cordis.original is refused [real module files + real engine classes]
+ok 18 - a proxy whose original is another class is refused [real module files + real engine classes]
+ok 19 - a proxy whose original carries an own method override is refused [real module files + real engine classes]
+ok 20 - swapping the traceable original after identification fails the pre-use check [real module files + real engine classes]
+ok 21 - residual: Object.create(prototype) passes (documented limit) [real module files + real engine classes]
+ok 22 - residual: a transparent instance Proxy passes (documented limit) [real module files + real engine classes]
+
+22 identity checks passed
+
+=== scripts/preflight-test.mjs ===
+ok 1 - attests the pinned 0.2.2 release from the runtime manifest [real preflight script]
+ok 2 - rejects the v9 counterexample: 0.2.2 bytes with a 0.2.3 package.json [real preflight script]
+ok 3 - rejects a runtime manifest that declares another version [real preflight script]
+ok 4 - rejects a runtime root without package.json [real preflight script]
+ok 5 - rejects an empty profile name [real preflight script]
+ok 6 - reads a runtime root inside an asar archive [real preflight script]
+ok 7 - the pinned table matches the published tarball bytes [real preflight script]
+
+7 preflight checks passed
+
+=== real-api 0.2.2 ===
+ok 1 - the real Session rejects a replacement that shadows the system node [real Session append + fake engine/llm/meter]
+ok 2 - the real Session requires sourceEventSeqs to cover every shadowed node [real Session append + fake engine/llm/meter]
+ok 3 - the real Session accepts the engine-shaped replacement [real Session append + fake engine/llm/meter]
+ok 4 - an interrupted compaction is closed by the guard on a real Session [real Session append + fake engine/llm/meter]
+ok 5 - recovery cap closes the transaction and the next turn can still compact [real Session append + fake engine/llm/meter]
+ok 6 - a prune claim without its replacement leaves the surface untouched [real Session append + fake engine/llm/meter]
+ok 7 - a manual compaction is never closed by the guard [real Session append + fake engine/llm/meter]
+ok 8 - a closed bracket without a replacement is not treated as active [real Session append + fake engine/llm/meter]
+
+8 real-API checks passed
+
+=== real-api 0.2.3 ===
+ok 1 - the real Session rejects a replacement that shadows the system node [real Session append + fake engine/llm/meter]
+ok 2 - the real Session requires sourceEventSeqs to cover every shadowed node [real Session append + fake engine/llm/meter]
+ok 3 - the real Session accepts the engine-shaped replacement [real Session append + fake engine/llm/meter]
+ok 4 - an interrupted compaction is closed by the guard on a real Session [real Session append + fake engine/llm/meter]
+ok 5 - recovery cap closes the transaction and the next turn can still compact [real Session append + fake engine/llm/meter]
+ok 6 - a prune claim without its replacement leaves the surface untouched [real Session append + fake engine/llm/meter]
+ok 7 - a manual compaction is never closed by the guard [real Session append + fake engine/llm/meter]
+ok 8 - a closed bracket without a replacement is not treated as active [real Session append + fake engine/llm/meter]
+
+8 real-API checks passed
+
+=== real-engine ===
+ok 1 - 0.2.2-rc.1: header-only routing matches the engine's captured request [REAL engine class + real attestation + fake LLM]
+ok 2 - 0.2.2-rc.1: a configured summary target wins and matches the engine [REAL engine class + real attestation + fake LLM]
+ok 3 - 0.2.2-rc.1: a per-target policy override matches the engine [REAL engine class + real attestation + fake LLM]
+ok 4 - 0.2.2-rc.1: answered-route precedence matches the engine [REAL engine class + real attestation + fake LLM]
+ok 5 - 0.2.3-alpha.2: header-only routing matches the engine's captured request [REAL engine class + real attestation + fake LLM]
+ok 6 - 0.2.3-alpha.2: a configured summary target wins and matches the engine [REAL engine class + real attestation + fake LLM]
+ok 7 - 0.2.3-alpha.2: a per-target policy override matches the engine [REAL engine class + real attestation + fake LLM]
+ok 8 - 0.2.3-alpha.2: answered-route precedence matches the engine [REAL engine class + real attestation + fake LLM]
+ok 9 - a pin that contradicts the real engine is refused [REAL engine class + real attestation + fake LLM]
+
+9 real-engine checks passed

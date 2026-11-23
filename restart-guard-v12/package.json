@@ -1,0 +1,24 @@
+{
+  "name": "dsh-restart-guard",
+  "version": "0.12.0",
+  "private": true,
+  "type": "module",
+  "description": "Recover a resumed session whose replayed surface no longer fits the model window: protect the system head, pin the engine to validated releases by class fingerprint, mirror their route rules, bind every budget to the proposed route, and reserve the proposed model default when the header inherited an adapter default, repair interrupted compaction transactions, and never treat an ordinary network fault as a context overflow.",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
+
