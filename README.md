@@ -1,6 +1,10 @@
 
 **为 DSH 提供原生压缩失败后的自动恢复保护。**
 
+Built for recovering DSH conversations after context-management failures.
+
+When a conversation gets stuck, help it live again.
+
 `dsh-restart-guard` 是一个面向 DSH 的恢复保护插件，旨在应对上下文超限、原生压缩失败等情况下会话无法继续正常运行的问题。
 
 当 DSH 原生压缩无法完成，并且 Provider 返回上下文超限拒绝时，Restart Guard 可以识别该故障并接管恢复流程，通过分块摘要降低会话上下文占用，使原会话有机会恢复正常交互。
